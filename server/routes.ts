@@ -16,7 +16,8 @@ async function seedDatabase() {
     console.log("Seeding database with sample listings...");
 
     // Create a demo host user
-    const passwordHash = await bcrypt.hash("demo123456", 10);
+    const demoPassword = process.env.DEMO_PASSWORD || "demo123456";
+    const passwordHash = await bcrypt.hash(demoPassword, 10);
     const hostRows = await db
       .insert(users)
       .values({
@@ -124,8 +125,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // PUT /api/auth/profile
   app.put("/api/auth/profile", authMiddleware, async (req: Request, res: Response) => {
-    const { name, bio, avatar_url, role } = req.body;
-    const updated = await storage.updateUser(req.user!.userId, { name, bio, avatar_url, role });
+    const { name, bio, avatar_url } = req.body;
+    const updated = await storage.updateUser(req.user!.userId, { name, bio, avatar_url });
     if (!updated) {
       res.status(404).json({ message: "User not found" });
       return;

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as SecureStore from "expo-secure-store";
 import { apiRequest, queryClient } from "@/lib/query-client";
 
 interface AuthUser {
@@ -35,8 +35,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async function loadStoredAuth() {
       try {
         const [storedToken, storedUser] = await Promise.all([
-          AsyncStorage.getItem(TOKEN_KEY),
-          AsyncStorage.getItem(USER_KEY),
+          SecureStore.getItemAsync(TOKEN_KEY),
+          SecureStore.getItemAsync(USER_KEY),
         ]);
         if (storedToken && storedUser) {
           setToken(storedToken);
@@ -54,8 +54,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     const res = await apiRequest("POST", "/api/auth/login", { email, password });
     const data = await res.json();
-    await AsyncStorage.setItem(TOKEN_KEY, data.token);
-    await AsyncStorage.setItem(USER_KEY, JSON.stringify(data.user));
+    await SecureStore.setItemAsync(TOKEN_KEY, data.token);
+    await SecureStore.setItemAsync(USER_KEY, JSON.stringify(data.user));
     setToken(data.token);
     setUser(data.user);
     queryClient.clear();
@@ -64,15 +64,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (email: string, password: string, name: string, role: string) => {
     const res = await apiRequest("POST", "/api/auth/register", { email, password, name, role });
     const data = await res.json();
-    await AsyncStorage.setItem(TOKEN_KEY, data.token);
-    await AsyncStorage.setItem(USER_KEY, JSON.stringify(data.user));
+    await SecureStore.setItemAsync(TOKEN_KEY, data.token);
+    await SecureStore.setItemAsync(USER_KEY, JSON.stringify(data.user));
     setToken(data.token);
     setUser(data.user);
     queryClient.clear();
   };
 
   const logout = async () => {
-    await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY]);
+    await Promise.all([
+      SecureStore.deleteItemAsync(TOKEN_KEY),
+      SecureStore.deleteItemAsync(USER_KEY),
+    ]);
     setToken(null);
     setUser(null);
     queryClient.clear();
@@ -81,7 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateProfile = async (data: Partial<AuthUser>) => {
     const res = await apiRequest("PUT", "/api/auth/profile", data);
     const updated = await res.json();
-    await AsyncStorage.setItem(USER_KEY, JSON.stringify(updated));
+    await SecureStore.setItemAsync(USER_KEY, JSON.stringify(updated));
     setUser(updated);
   };
 

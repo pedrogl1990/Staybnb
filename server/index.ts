@@ -29,10 +29,10 @@ function setupCors(app: express.Application) {
 
     const origin = req.header("origin");
 
-    // Allow localhost origins for Expo web development (any port)
-    const isLocalhost =
-      origin?.startsWith("http://localhost:") ||
-      origin?.startsWith("http://127.0.0.1:");
+    // Allow localhost origins for Expo web development (specific dev ports only)
+    const ALLOWED_LOCALHOST_PORTS = new Set(["3000", "5000", "5173", "8081", "19000", "19001", "19002"]);
+    const localhostMatch = origin?.match(/^http:\/\/(?:localhost|127\.0\.0\.1):(\d+)$/);
+    const isLocalhost = !!(localhostMatch && ALLOWED_LOCALHOST_PORTS.has(localhostMatch[1]));
 
     if (origin && (origins.has(origin) || isLocalhost)) {
       res.header("Access-Control-Allow-Origin", origin);
@@ -86,7 +86,13 @@ function setupRequestLogging(app: express.Application) {
 
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+        const SENSITIVE_KEYS = new Set(["token", "password", "password_hash", "secret"]);
+        const sanitized = Object.fromEntries(
+          Object.entries(capturedJsonResponse).map(([k, v]) =>
+            SENSITIVE_KEYS.has(k) ? [k, "[redacted]"] : [k, v]
+          )
+        );
+        logLine += ` :: ${JSON.stringify(sanitized)}`;
       }
 
       if (logLine.length > 80) {
